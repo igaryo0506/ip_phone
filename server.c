@@ -8,17 +8,36 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
+#include <pthread.h>
+
+#define NUM_THREAD 2
 
 void die(char *);
+void *communication(void *arg);
+
+struct data {
+    int port;
+};
 
 int main(int argc, char ** argv)
 {
+    pthread_t t[NUM_THREAD];
+    struct data d[NUM_THREAD];
+    d[0].port = 50000;
+
+    pthread_create(&t[0], NULL, communication, &d[0]);
+    pthread_join(t[0], NULL);
+    // communication(argv[1]);
+}
+
+void *communication(void *arg){
+    struct data *pd = (struct data *)arg;
     int ss = socket(PF_INET, SOCK_STREAM, 0);
     if(ss < 0) die("socket");
 
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(atoi(argv[1]));
+    addr.sin_port = htons(pd->port);
     addr.sin_addr.s_addr = INADDR_ANY;
     bind(ss, (struct sockaddr *)&addr,sizeof(addr));
 
@@ -31,7 +50,7 @@ int main(int argc, char ** argv)
     char * cmdline = "rec -t raw -b 16 -c 1 -e s -r 44100 -";
     FILE * fp = popen(cmdline, "r");
 
-    int N = 256;
+    int N = 1;
     unsigned char data1[N];
     unsigned char data2[N];
     while(1){
