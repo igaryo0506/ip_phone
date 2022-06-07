@@ -9,6 +9,7 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <pthread.h>
+#include <string.h>
 
 #define NUM_THREAD 3 //今回は3クライアントの通信
 
@@ -140,7 +141,8 @@ int main()
             // write(1,"hello",5);
             if(connect_flag_a & connect_flag_b){
                 if(recved_flag_a == 1){
-                    *send_data_a = *recv_data_b;
+                    //memcpy(send_data_a,recv_data_b,LENGTH);
+                    // *send_data_a = *recv_data_b;
                     recved_flag_a = 0;
                     sendable_flag_a = 1;
                 } else {
@@ -149,7 +151,8 @@ int main()
                 }
 
                 if(recved_flag_b == 1){
-                    *send_data_b = *recv_data_a;
+                    memcpy(send_data_b,recv_data_a,LENGTH);
+                    // *send_data_b = *recv_data_a;
                     recved_flag_b = 0;
                     sendable_flag_b = 1;
                 } else {
@@ -159,14 +162,9 @@ int main()
             }
         }else if (connect_flag_a + connect_flag_b + connect_flag_c == 1){
             // write(1,"goodmorning",11);
-            if(recved_flag_a == 1){
-                *send_data_a = ' ';
-                recved_flag_a = 0;
-                sendable_flag_a = 1;
-            } else {
-                *send_data_a = ' ';
-                sendable_flag_a = 1;
-            }
+            *send_data_a = 0;
+            recved_flag_a = 0;
+            sendable_flag_a = 1;
         }
         
     }
@@ -195,7 +193,7 @@ void *communication(void *thr_arg){
 
     while(1){
         //データを受け取って、受け取れたらその値を、受け取れなかったら0をメモリに格納
-        int l = recv(s, pd->recv_data_ptr, 1, 0);
+        int l = recv(s, pd->recv_data_ptr, 1000, 0);
         // write(1,pd->recv_data_ptr,l);
         if (l == -1){
             die("recv");
@@ -206,17 +204,17 @@ void *communication(void *thr_arg){
             *pd->recved_flag = 1;
         }
 
-        //sendable_flagが1ならsendする
+        // sendable_flagが1ならsendする
         if (*pd->sendable_flag == 1) {
-            // write(1,"flag on",7);
-            int n = send(s, pd->send_data_ptr, 1, 0);
+            // write(1,pd->send_data_ptr, 1000);
+            int n = send(s, pd->send_data_ptr, 1000, 0);
             if (n == -1) die("send");
             *pd->sendable_flag = 0;    
         }
     }
     shutdown(s,SHUT_WR);
     close(s);
-    *pd->connect_flag = 1;
+    *pd->connect_flag = 0;
 }
 
 void die(char *s)
