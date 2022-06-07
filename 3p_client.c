@@ -25,7 +25,7 @@ int main(int argc, char ** argv)
     char * cmdline = "rec -t raw -b 16 -c 1 -e s -r 44100 -";
     FILE * fp = popen(cmdline, "r");
 
-    int N = 1;
+    int N = 1000;
     unsigned char data1[N];
     unsigned char data2[N];
     
