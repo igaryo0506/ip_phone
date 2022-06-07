@@ -10,72 +10,127 @@
 #include <netinet/tcp.h>
 #include <pthread.h>
 
-#define NUM_THREAD 2
+#define NUM_THREAD 3 //今回は3クライアントの通信
 
 void die(char *);
 void *communication(void *arg);
 
-struct data {
+//sendするデータのフォーマット
+typedef struct {
+    int num;
+    unsigned char dat;
+} send_data;
+
+typedef struct {
     int port;
-};
+    int * recved_flag; //0 || 1
+    send_data * recv_data_ptr;
+    send_data * send_data_ptr;
+} arg;
+
+
 
 int main(int argc, char ** argv)
 {
-    pthread_t t[NUM_THREAD];
-    struct data d[NUM_THREAD];
+    //メモリの確保
+    send_data * send_data_a = (send_data *)malloc(sizeof(send_data)); //クライアントAにsendする用
+    send_data * send_data_b = (send_data *)malloc(sizeof(send_data)); //クライアントBにsendする用
+    send_data * send_data_c = (send_data *)malloc(sizeof(send_data)); //クライアントCにsendする用
+    send_data * recv_data_a = (send_data *)malloc(sizeof(send_data)); //クライアントAからrecvした用
+    send_data * recv_data_b = (send_data *)malloc(sizeof(send_data)); //クライアントBからrecvした用
+    send_data * recv_data_c = (send_data *)malloc(sizeof(send_data)); //クライアントCからrecvした用
 
+
+    //recvを見るフラグの定義
+    int recved_flag_a = 0;
+    int recved_flag_b = 0;
+    int recved_flag_c = 0;
+
+    //スレッド、スレッドに渡す引数の定義
+    pthread_t t[NUM_THREAD];
+    arg d[NUM_THREAD];
+
+    //スレッドAの開始
     d[0].port = 50000;
+    d[0].recved_flag = &recved_flag_a;
+    d[0].send_data_ptr = send_data_a;
+    d[0].recv_data_ptr = recv_data_a;
     pthread_create(&t[0], NULL, communication, &d[0]);
 
+    //スレッドBの開始
     d[1].port = 49990;
+    d[1].recved_flag = &recved_flag_b;
+    d[1].send_data_ptr = send_data_b;
+    d[1].recv_data_ptr = recv_data_b;
     pthread_create(&t[1], NULL, communication, &d[1]);
+
+    //スレッドCの開始
+    d[2].port = 49980;
+    d[2].recved_flag = &recved_flag_c;
+    d[2].send_data_ptr = send_data_c;
+    d[2].recv_data_ptr = recv_data_c;
+    pthread_create(&t[2], NULL, communication, &d[2]);
+
+    //スレッドの巡回とrecvしたデータをsendするデータに入れる
+    while(1)
+    {
+        if(recved_flag_a == 1){
+            send_data_a->dat = recv_data_a->dat;
+            send_data_a->dat = 0;
+        } else {
+            send_data_a->dat = 0;
+        }
+
+        if(recved_flag_b == 1){
+            send_data_b->dat = recv_data_b->dat;
+            send_data_b->dat = 0;
+        } else {
+            send_data_b->dat = 0;
+        }
+
+        if(recved_flag_c == 1){
+            send_data_c->dat = recv_data_c->dat;
+            send_data_c->dat = 0;
+        } else {
+            send_data_c->dat = 0;
+        }
+    }
+
 
     pthread_join(t[0], NULL);
     pthread_join(t[1], NULL);
+    pthread_join(t[2], NULL);
 }
 
-void *communication(void *arg){
-    struct data *pd = (struct data *)arg;
+void *communication(void *thr_arg){
+    //ポートを開いてサーバを起動
+    arg * pd = (arg *)thr_arg;
     int ss = socket(PF_INET, SOCK_STREAM, 0);
     if(ss < 0) die("socket");
-
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(pd->port); //引数で渡されたポート番号をソケットに指定
     addr.sin_addr.s_addr = INADDR_ANY;
     bind(ss, (struct sockaddr *)&addr,sizeof(addr));
-
     listen(ss,10);
-
     struct sockaddr_in client_addr;
     socklen_t len = sizeof(struct sockaddr_in);
     int s = accept(ss,(struct sockaddr *) &client_addr, &len);
 
-    char * cmdline = "rec -t raw -b 16 -c 1 -e s -r 44100 -";
-    FILE * fp = popen(cmdline, "r");
-
+    //
     int N = 1;
     unsigned char data1[N];
-    unsigned char data2[N];
-    while(1){
-        int m = fread(data1, 1, N, fp);
-        if (m == -1) die("read");
-        if (m > 0){
-            int n = send(s, data1, m, 0);
-            if (n == -1) { die("send");}
-        }
 
-        int l = recv(s, data2, N, 0);
+    while(1){
+        int l = recv(s, data1, N, 0);
+        pd->recv_data_ptr = data1;
         if (l == -1) die("recv");
-        if (l > 0) write(1, data2, l);
+        if (l > 0) {
+            pd->recved_flag = 1;
+        }
     }
     shutdown(s,SHUT_WR);
-   close(s);
-}
-
-void synth_and_write()
-{
-    
+    close(s);
 }
 
 void die(char *s){
