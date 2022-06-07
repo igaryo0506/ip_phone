@@ -23,6 +23,7 @@ void *communication(void *arg);
 
 typedef struct {
     int port;
+    int * connect_flag; //0 || 1
     int * recved_flag; //0 || 1
     int * sendable_flag; //0 || 1
     unsigned char * recv_data_ptr;
@@ -35,6 +36,7 @@ int main()
 {
     // 送受信するデータの基本単位
     const int LENGTH = 1000;
+    printf("begin");
 
     //メモリの確保
     unsigned char * send_data_a = (unsigned char *)malloc(sizeof(unsigned char) * LENGTH); //クライアントAにsendする用
@@ -44,10 +46,17 @@ int main()
     unsigned char * recv_data_b = (unsigned char *)malloc(sizeof(unsigned char) * LENGTH); //クライアントBからrecvした用
     unsigned char * recv_data_c = (unsigned char *)malloc(sizeof(unsigned char) * LENGTH); //クライアントCからrecvした用
 
+    printf("malloc done");
+
     // sendするdataが空の時にセグフォならないようにする
     send_data_a[0] = '\0';
     send_data_b[0] = '\0';
     send_data_c[0] = '\0';
+
+    //接続しているかどうかのフラグの定義
+    int connect_flag_a = 0;
+    int connect_flag_b = 0;
+    int connect_flag_c = 0;
 
 
     //recvを見るフラグの定義
@@ -66,57 +75,89 @@ int main()
 
     //スレッドAの開始
     d[0].port = 50000;
+    d[0].connect_flag = &connect_flag_a;
     d[0].recved_flag = &recved_flag_a;
     d[0].sendable_flag = &sendable_flag_a;
     d[0].send_data_ptr = send_data_a;
     d[0].recv_data_ptr = recv_data_a;
     pthread_create(&t[0], NULL, communication, &d[0]);
+    printf("thread A begin");
 
     //スレッドBの開始
     d[1].port = 49990;
+    d[0].connect_flag = &connect_flag_b;
     d[1].recved_flag = &recved_flag_b;
     d[1].sendable_flag = &sendable_flag_b;
     d[1].send_data_ptr = send_data_b;
     d[1].recv_data_ptr = recv_data_b;
     pthread_create(&t[1], NULL, communication, &d[1]);
+    printf("thread B begin");
 
     //スレッドCの開始
     d[2].port = 49980;
+    d[0].connect_flag = &connect_flag_c;
     d[2].recved_flag = &recved_flag_c;
     d[2].sendable_flag = &sendable_flag_c;
     d[2].send_data_ptr = send_data_c;
     d[2].recv_data_ptr = recv_data_c;
     pthread_create(&t[2], NULL, communication, &d[2]);
+    printf("thread C begin");
 
     //スレッドの巡回とrecvしたデータをsendするデータに入れる
     while(1)
     {
-        if(recved_flag_a == 1){
-            *send_data_a = (*recv_data_b + *recv_data_c) / 2;
-            recved_flag_a = 0;
-            sendable_flag_a = 1;
-        } else {
-            *send_data_a = 0;
-            sendable_flag_a = 1;
-        }
+        if(connect_flag_a + connect_flag_b + connect_flag_c == 3){
+            if(recved_flag_a == 1){
+                *send_data_a = (*recv_data_b + *recv_data_c) / 2;
+                recved_flag_a = 0;
+                sendable_flag_a = 1;
+                printf("send A");
+            } else {
+                *send_data_a = 0;
+                sendable_flag_a = 1;
+                printf("send else A");
+            }
 
-        if(recved_flag_b == 1){
-            *send_data_b = (*recv_data_a + *recv_data_c) / 2;
-            recved_flag_b = 0;
-            sendable_flag_b = 1;
-        } else {
-            *send_data_b = 0;
-            sendable_flag_b = 1;
-        }
+            if(recved_flag_b == 1){
+                *send_data_b = (*recv_data_a + *recv_data_c) / 2;
+                recved_flag_b = 0;
+                sendable_flag_b = 1;
+            } else {
+                *send_data_b = 0;
+                sendable_flag_b = 1;
+            }
 
-        if(recved_flag_c == 1){
-            *send_data_c = (*recv_data_a + *recv_data_b) / 2;
-            recved_flag_c = 0;
-            sendable_flag_c = 1;
-        } else {
-            *send_data_c = 0;
-            sendable_flag_c = 1;
+            if(recved_flag_c == 1){
+                *send_data_c = (*recv_data_a + *recv_data_b) / 2;
+                recved_flag_c = 0;
+                sendable_flag_c = 1;
+            } else {
+                *send_data_c = 0;
+                sendable_flag_c = 1;
+            }
+        }else if(connect_flag_a + connect_flag_b + connect_flag_c == 3){
+            // TODO:後で関数にしてb,c a,cにも対応
+            if(connect_flag_a & connect_flag_b){
+                if(recved_flag_a == 1){
+                    *send_data_a = *recv_data_b;
+                    recved_flag_a = 0;
+                    sendable_flag_a = 1;
+                } else {
+                    *send_data_a = 0;
+                    sendable_flag_a = 1;
+                }
+
+                if(recved_flag_b == 1){
+                    *send_data_b = *recv_data_a;
+                    recved_flag_b = 0;
+                    sendable_flag_b = 1;
+                } else {
+                    *send_data_b = 0;
+                    sendable_flag_b = 1;
+                }
+            }
         }
+        
     }
 
 
@@ -139,30 +180,31 @@ void *communication(void *thr_arg){
     struct sockaddr_in client_addr;
     socklen_t len = sizeof(struct sockaddr_in);
     int s = accept(ss,(struct sockaddr *) &client_addr, &len);
+    *pd->connect_flag = 1;
 
     while(1){
         //データを受け取って、受け取れたらその値を、受け取れなかったら0をメモリに格納
         int l = recv(s, pd->recv_data_ptr, 1, 0);
         write(1,pd->recv_data_ptr,l);
-        if (l == -1) die("recv");
-        if (l == 0) {
+        if (l == -1){
+            die("recv");
+        } else if (l == 0) {
             *pd->recv_data_ptr = 0;
             *pd->recved_flag = 1;
-        }
-        if (l > 0) {
+        } else if (l > 0) {
             *pd->recved_flag = 1;
         }
 
-        //sendable_flagが1ならsendする
-        if (*pd->sendable_flag == 1) {
-            int n = send(s, pd->send_data_ptr, 1, 0);
-            if (n == -1) die("send");
-            *pd->sendable_flag = 0;      
-        }
+        // //sendable_flagが1ならsendする
+        // if (*pd->sendable_flag == 1) {
+        //     int n = send(s, pd->send_data_ptr, 1, 0);
+        //     if (n == -1) die("send");
+        //     *pd->sendable_flag = 0;      
+        // }
     }
-
     shutdown(s,SHUT_WR);
     close(s);
+    *pd->connect_flag = 1;
 }
 
 void die(char *s)
