@@ -16,7 +16,7 @@ chmod +x exe_cli_a.sh exe_cli_b.sh exe_cli_c.sh
 
 クライアントB
 ```shell
-./exe_cli_a (サーバーのIPアドレス)
+./exe_cli_b (サーバーのIPアドレス)
 ```
 
 クライアントC
