@@ -84,29 +84,29 @@ int main(int argc, char ** argv)
     while(1)
     {
         if(recved_flag_a == 1){
-            send_data_a = *recv_data_b + *recv_data_c;
+            *send_data_a = *recv_data_b + *recv_data_c;
             recved_flag_a = 0;
             sendable_flag_a = 1;
         } else {
-            send_data_a = 0;
+            *send_data_a = 0;
             sendable_flag_a = 1;
         }
 
         if(recved_flag_b == 1){
-            send_data_b = *recv_data_a + *recv_data_c;
+            *send_data_b = *recv_data_a + *recv_data_c;
             recved_flag_b = 0;
             sendable_flag_b = 1;
         } else {
-            send_data_b = 0;
+            *send_data_b = 0;
             sendable_flag_b = 1;
         }
 
         if(recved_flag_c == 1){
-            send_data_c = *recv_data_a + *recv_data_b;
+            *send_data_c = *recv_data_a + *recv_data_b;
             recved_flag_c = 0;
             sendable_flag_c = 1;
         } else {
-            send_data_c = 0;
+            *send_data_c = 0;
             sendable_flag_c = 1;
         }
     }
@@ -137,15 +137,15 @@ void *communication(void *thr_arg){
         int l = recv(s, pd->recv_data_ptr, 1, 0);
         if (l == -1) die("recv");
         if (l == 0) {
-            *(pd->recv_data_ptr) = 0;
-            pd->recved_flag = 1;
+            *pd->recv_data_ptr = 0;
+            *pd->recved_flag = 1;
         }
         if (l > 0) {
-            pd->recved_flag = 1;
+            *pd->recved_flag = 1;
         }
 
         //sendable_flagが1ならsendする
-        if (pd->sendable_flag == 1) {
+        if (*pd->sendable_flag == 1) {
             int n = send(s, pd->send_data_ptr, 1, 0);
             if (n == -1) die("send");
             pd->sendable_flag = 0;            
