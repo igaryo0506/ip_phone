@@ -31,7 +31,7 @@ typedef struct {
 
 
 
-int main(int argc, char ** argv)
+int main()
 {
     //メモリの確保
     unsigned char * send_data_a = (unsigned char *)malloc(sizeof(unsigned char)); //クライアントAにsendする用
