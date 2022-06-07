@@ -33,13 +33,21 @@ typedef struct {
 
 int main()
 {
+    // 送受信するデータの基本単位
+    const int LENGTH = 1000;
+
     //メモリの確保
-    unsigned char * send_data_a = (unsigned char *)malloc(sizeof(unsigned char)); //クライアントAにsendする用
-    unsigned char * send_data_b = (unsigned char *)malloc(sizeof(unsigned char)); //クライアントBにsendする用
-    unsigned char * send_data_c = (unsigned char *)malloc(sizeof(unsigned char)); //クライアントCにsendする用
-    unsigned char * recv_data_a = (unsigned char *)malloc(sizeof(unsigned char)); //クライアントAからrecvした用
-    unsigned char * recv_data_b = (unsigned char *)malloc(sizeof(unsigned char)); //クライアントBからrecvした用
-    unsigned char * recv_data_c = (unsigned char *)malloc(sizeof(unsigned char)); //クライアントCからrecvした用
+    unsigned char * send_data_a = (unsigned char *)malloc(sizeof(unsigned char) * LENGTH); //クライアントAにsendする用
+    unsigned char * send_data_b = (unsigned char *)malloc(sizeof(unsigned char) * LENGTH); //クライアントBにsendする用
+    unsigned char * send_data_c = (unsigned char *)malloc(sizeof(unsigned char) * LENGTH); //クライアントCにsendする用
+    unsigned char * recv_data_a = (unsigned char *)malloc(sizeof(unsigned char) * LENGTH); //クライアントAからrecvした用
+    unsigned char * recv_data_b = (unsigned char *)malloc(sizeof(unsigned char) * LENGTH); //クライアントBからrecvした用
+    unsigned char * recv_data_c = (unsigned char *)malloc(sizeof(unsigned char) * LENGTH); //クライアントCからrecvした用
+
+    // sendするdataが空の時にセグフォならないようにする
+    send_data_a[0] = '\0';
+    send_data_b[0] = '\0';
+    send_data_c[0] = '\0';
 
 
     //recvを見るフラグの定義
@@ -84,7 +92,7 @@ int main()
     while(1)
     {
         if(recved_flag_a == 1){
-            *send_data_a = *recv_data_b + *recv_data_c;
+            *send_data_a = (*recv_data_b + *recv_data_c) / 2;
             recved_flag_a = 0;
             sendable_flag_a = 1;
         } else {
@@ -93,7 +101,7 @@ int main()
         }
 
         if(recved_flag_b == 1){
-            *send_data_b = *recv_data_a + *recv_data_c;
+            *send_data_b = (*recv_data_a + *recv_data_c) / 2;
             recved_flag_b = 0;
             sendable_flag_b = 1;
         } else {
@@ -102,7 +110,7 @@ int main()
         }
 
         if(recved_flag_c == 1){
-            *send_data_c = *recv_data_a + *recv_data_b;
+            *send_data_c = (*recv_data_a + *recv_data_b) / 2;
             recved_flag_c = 0;
             sendable_flag_c = 1;
         } else {
@@ -135,6 +143,7 @@ void *communication(void *thr_arg){
     while(1){
         //データを受け取って、受け取れたらその値を、受け取れなかったら0をメモリに格納
         int l = recv(s, pd->recv_data_ptr, 1, 0);
+        write(1,pd->recv_data_ptr,l);
         if (l == -1) die("recv");
         if (l == 0) {
             *pd->recv_data_ptr = 0;
@@ -148,7 +157,7 @@ void *communication(void *thr_arg){
         if (*pd->sendable_flag == 1) {
             int n = send(s, pd->send_data_ptr, 1, 0);
             if (n == -1) die("send");
-            pd->sendable_flag = 0;            
+            *pd->sendable_flag = 0;      
         }
     }
 

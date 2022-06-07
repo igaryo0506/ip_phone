@@ -9,6 +9,7 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <pthread.h>
+#include <string.h>
 
 #define NUM_THREAD 2
 
@@ -51,19 +52,19 @@ void *communication(void *arg){
     socklen_t len = sizeof(struct sockaddr_in);
     int s = accept(ss,(struct sockaddr *) &client_addr, &len);
 
-    char * cmdline = "rec -t raw -b 16 -c 1 -e s -r 44100 -";
-    FILE * fp = popen(cmdline, "r");
+    // char * cmdline = "rec -t raw -b 16 -c 1 -e s -r 44100 -";
+    // FILE * fp = popen(cmdline, "r");
 
     int N = 1;
     unsigned char data1[N];
     unsigned char data2[N];
     while(1){
-        int m = fread(data1, 1, N, fp);
-        if (m == -1) die("read");
-        if (m > 0){
-            int n = send(s, data1, m, 0);
-            if (n == -1) { die("send");}
-        }
+        //int m = fread(data1, 1, N, fp);
+        // if (m == -1) die("read");
+        // if (m > 0){
+        //     int n = send(s, data1, m, 0);
+        //     if (n == -1) { die("send");}
+        // }
 
         int l = recv(s, data2, N, 0);
         if (l == -1) die("recv");
