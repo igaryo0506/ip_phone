@@ -85,7 +85,7 @@ int main()
 
     //スレッドBの開始
     d[1].port = 49990;
-    d[0].connect_flag = &connect_flag_b;
+    d[1].connect_flag = &connect_flag_b;
     d[1].recved_flag = &recved_flag_b;
     d[1].sendable_flag = &sendable_flag_b;
     d[1].send_data_ptr = send_data_b;
@@ -95,7 +95,7 @@ int main()
 
     //スレッドCの開始
     d[2].port = 49980;
-    d[0].connect_flag = &connect_flag_c;
+    d[2].connect_flag = &connect_flag_c;
     d[2].recved_flag = &recved_flag_c;
     d[2].sendable_flag = &sendable_flag_c;
     d[2].send_data_ptr = send_data_c;
@@ -135,8 +135,9 @@ int main()
                 *send_data_c = 0;
                 sendable_flag_c = 1;
             }
-        }else if(connect_flag_a + connect_flag_b + connect_flag_c == 3){
+        }else if(connect_flag_a + connect_flag_b + connect_flag_c == 2){
             // TODO:後で関数にしてb,c a,cにも対応
+            // write(1,"hello",5);
             if(connect_flag_a & connect_flag_b){
                 if(recved_flag_a == 1){
                     *send_data_a = *recv_data_b;
@@ -155,6 +156,16 @@ int main()
                     *send_data_b = 0;
                     sendable_flag_b = 1;
                 }
+            }
+        }else if (connect_flag_a + connect_flag_b + connect_flag_c == 1){
+            // write(1,"goodmorning",11);
+            if(recved_flag_a == 1){
+                *send_data_a = ' ';
+                recved_flag_a = 0;
+                sendable_flag_a = 1;
+            } else {
+                *send_data_a = ' ';
+                sendable_flag_a = 1;
             }
         }
         
@@ -185,7 +196,7 @@ void *communication(void *thr_arg){
     while(1){
         //データを受け取って、受け取れたらその値を、受け取れなかったら0をメモリに格納
         int l = recv(s, pd->recv_data_ptr, 1, 0);
-        write(1,pd->recv_data_ptr,l);
+        // write(1,pd->recv_data_ptr,l);
         if (l == -1){
             die("recv");
         } else if (l == 0) {
@@ -195,12 +206,13 @@ void *communication(void *thr_arg){
             *pd->recved_flag = 1;
         }
 
-        // //sendable_flagが1ならsendする
-        // if (*pd->sendable_flag == 1) {
-        //     int n = send(s, pd->send_data_ptr, 1, 0);
-        //     if (n == -1) die("send");
-        //     *pd->sendable_flag = 0;      
-        // }
+        //sendable_flagが1ならsendする
+        if (*pd->sendable_flag == 1) {
+            // write(1,"flag on",7);
+            int n = send(s, pd->send_data_ptr, 1, 0);
+            if (n == -1) die("send");
+            *pd->sendable_flag = 0;    
+        }
     }
     shutdown(s,SHUT_WR);
     close(s);
