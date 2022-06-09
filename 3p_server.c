@@ -181,7 +181,8 @@ int main()
             }
             
         }else if (connect_flag_a + connect_flag_b + connect_flag_c == 1){
-            *send_data_a = 0;
+            memcpy(send_data_a, recv_data_a, LENGTH);
+            write(1,"a\n",2);
             recved_flag_a = 0;
             sendable_flag_a = 1;
         }
