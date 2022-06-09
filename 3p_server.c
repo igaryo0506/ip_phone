@@ -12,9 +12,20 @@
 #include <string.h>
 
 #define NUM_THREAD 3 //今回は3クライアントの通信
+#define LENGTH 1000 //送受信するデータの基本単位
 
 void die(char *);
 void *communication(void *arg);
+void patrol_thread_two_client(
+    int * recved_flag_1,
+    int * recved_flag_2,
+    int * sendable_flag_1,
+    int * sendable_flag_2,
+    unsigned char * send_data_1,
+    unsigned char * send_data_2,
+    unsigned char * recv_data_1,
+    unsigned char * recv_data_2
+);
 
 //sendするデータのフォーマット
 /* typedef struct {
@@ -35,10 +46,7 @@ typedef struct {
 
 int main()
 {
-    // 送受信するデータの基本単位
-    const int LENGTH = 1000;
-    printf("begin");
-
+    write(1,"begin",5);
     //メモリの確保
     unsigned char * send_data_a = (unsigned char *)malloc(sizeof(unsigned char) * LENGTH); //クライアントAにsendする用
     unsigned char * send_data_b = (unsigned char *)malloc(sizeof(unsigned char) * LENGTH); //クライアントBにsendする用
@@ -47,7 +55,7 @@ int main()
     unsigned char * recv_data_b = (unsigned char *)malloc(sizeof(unsigned char) * LENGTH); //クライアントBからrecvした用
     unsigned char * recv_data_c = (unsigned char *)malloc(sizeof(unsigned char) * LENGTH); //クライアントCからrecvした用
 
-    printf("malloc done");
+    write(1,"malloc done",11);
 
     // sendするdataが空の時にセグフォならないようにする
     send_data_a[0] = '\0';
@@ -82,7 +90,7 @@ int main()
     d[0].send_data_ptr = send_data_a;
     d[0].recv_data_ptr = recv_data_a;
     pthread_create(&t[0], NULL, communication, &d[0]);
-    printf("thread A begin");
+    write(1,"thread A begin",14);
 
     //スレッドBの開始
     d[1].port = 49990;
@@ -92,7 +100,7 @@ int main()
     d[1].send_data_ptr = send_data_b;
     d[1].recv_data_ptr = recv_data_b;
     pthread_create(&t[1], NULL, communication, &d[1]);
-    printf("thread B begin");
+    write(1,"thread B begin",14);
 
     //スレッドCの開始
     d[2].port = 49980;
@@ -102,7 +110,7 @@ int main()
     d[2].send_data_ptr = send_data_c;
     d[2].recv_data_ptr = recv_data_c;
     pthread_create(&t[2], NULL, communication, &d[2]);
-    printf("thread C begin");
+    write(1,"thread C begin",14);
 
     //スレッドの巡回とrecvしたデータをsendするデータに入れる
     while(1)
@@ -112,11 +120,11 @@ int main()
                 *send_data_a = (*recv_data_b + *recv_data_c) / 2;
                 recved_flag_a = 0;
                 sendable_flag_a = 1;
-                printf("send A");
+                write(1,"send A",6);
             } else {
                 *send_data_a = 0;
                 sendable_flag_a = 1;
-                printf("send else A");
+                write(1,"send else A",11);
             }
 
             if(recved_flag_b == 1){
@@ -137,31 +145,42 @@ int main()
                 sendable_flag_c = 1;
             }
         }else if(connect_flag_a + connect_flag_b + connect_flag_c == 2){
-            // TODO:後で関数にしてb,c a,cにも対応
-            // write(1,"hello",5);
             if(connect_flag_a & connect_flag_b){
-                if(recved_flag_a == 1){
-                    //memcpy(send_data_a,recv_data_b,LENGTH);
-                    // *send_data_a = *recv_data_b;
-                    recved_flag_a = 0;
-                    sendable_flag_a = 1;
-                } else {
-                    *send_data_a = 0;
-                    sendable_flag_a = 1;
-                }
-
-                if(recved_flag_b == 1){
-                    memcpy(send_data_b,recv_data_a,LENGTH);
-                    // *send_data_b = *recv_data_a;
-                    recved_flag_b = 0;
-                    sendable_flag_b = 1;
-                } else {
-                    *send_data_b = 0;
-                    sendable_flag_b = 1;
-                }
+                patrol_thread_two_client(
+                    &recved_flag_a,
+                    &recved_flag_b,
+                    &sendable_flag_a,
+                    &sendable_flag_b,
+                    send_data_a,
+                    send_data_b,
+                    recv_data_a,
+                    recv_data_b
+                );
+            } else if(connect_flag_a & connect_flag_c) {
+                patrol_thread_two_client(                                        
+                    &recved_flag_a,
+                    &recved_flag_c,
+                    &sendable_flag_a,
+                    &sendable_flag_c,
+                    send_data_a,
+                    send_data_c,
+                    recv_data_a,
+                    recv_data_c
+                );
+            } else {                                
+                patrol_thread_two_client(                                        
+                    &recved_flag_b,
+                    &recved_flag_c,
+                    &sendable_flag_b,
+                    &sendable_flag_c,
+                    send_data_b,
+                    send_data_c,
+                    recv_data_b,
+                    recv_data_c
+                );
             }
+            
         }else if (connect_flag_a + connect_flag_b + connect_flag_c == 1){
-            // write(1,"goodmorning",11);
             *send_data_a = 0;
             recved_flag_a = 0;
             sendable_flag_a = 1;
@@ -169,10 +188,39 @@ int main()
         
     }
 
-
     pthread_join(t[0], NULL);
     pthread_join(t[1], NULL);
     pthread_join(t[2], NULL);
+}
+
+void patrol_thread_two_client(
+    int * recved_flag_1,
+    int * recved_flag_2,
+    int * sendable_flag_1,
+    int * sendable_flag_2,
+    unsigned char * send_data_1,
+    unsigned char * send_data_2,
+    unsigned char * recv_data_1,
+    unsigned char * recv_data_2
+)
+{
+    if(*recved_flag_1 == 1){
+        memcpy(send_data_1,recv_data_2,LENGTH);                    
+        *recved_flag_1 = 0;
+        *sendable_flag_1 = 1;
+    } else {
+        *send_data_1 = 0;
+        *sendable_flag_1 = 1;
+    }
+
+    if(*recved_flag_2 == 1){
+        memcpy(send_data_2,recv_data_1,LENGTH);
+        *recved_flag_2 = 0;
+        *sendable_flag_2 = 1;
+    } else {
+        *send_data_2 = 0;
+        *sendable_flag_2 = 1;
+    }
 }
 
 void *communication(void *thr_arg){
