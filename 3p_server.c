@@ -181,11 +181,6 @@ int main()
             }
             
         }else if (connect_flag_a + connect_flag_b + connect_flag_c == 1){
-            // write(1,"a\n",2);
-            // write(1,recved_flag_a == 1 ? "re1" : "re0",3);
-            // write(1,"\n",1);
-            // write(1,sendable_flag_a == 1 ? "se1" : "se0",3);
-            // write(1,"\n",1);
             if(recved_flag_a == 1){
                 memcpy(send_data_a, recv_data_a, LENGTH);
                 recved_flag_a = 0;
@@ -248,7 +243,6 @@ void *communication(void *thr_arg){
     *pd->connect_flag = 1;
 
     while(1){
-        write(1,"b\n",2);
         //データを受け取って、受け取れたらその値を、受け取れなかったら0をメモリに格納
         int l = recv(s, pd->recv_data_ptr, 1000, 0);
         // write(1,pd->recv_data_ptr,l);
@@ -262,14 +256,10 @@ void *communication(void *thr_arg){
             *pd->recved_flag = 1;
         }
 
-        // write(1,pd->recv_data_ptr, 1000);
-        // send(s, pd->recv_data_ptr, 1000, 0);
-        
         // sendable_flagが1ならsendする
         if (*pd->sendable_flag == 1) {
             int n = send(s, pd->send_data_ptr, 1000, 0);
             if (n == -1) die("send");
-
             *pd->sendable_flag = 0;  
         }
     }
