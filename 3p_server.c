@@ -46,7 +46,7 @@ typedef struct {
 
 int main()
 {
-    write(1,"begin",5);
+    write(1,"begin\n",6);
     //メモリの確保
     unsigned char * send_data_a = (unsigned char *)malloc(sizeof(unsigned char) * LENGTH); //クライアントAにsendする用
     unsigned char * send_data_b = (unsigned char *)malloc(sizeof(unsigned char) * LENGTH); //クライアントBにsendする用
@@ -55,7 +55,7 @@ int main()
     unsigned char * recv_data_b = (unsigned char *)malloc(sizeof(unsigned char) * LENGTH); //クライアントBからrecvした用
     unsigned char * recv_data_c = (unsigned char *)malloc(sizeof(unsigned char) * LENGTH); //クライアントCからrecvした用
 
-    write(1,"malloc done",11);
+    write(1,"malloc done\n",12);
 
     // sendするdataが空の時にセグフォならないようにする
     send_data_a[0] = '\0';
@@ -90,7 +90,7 @@ int main()
     d[0].send_data_ptr = send_data_a;
     d[0].recv_data_ptr = recv_data_a;
     pthread_create(&t[0], NULL, communication, &d[0]);
-    write(1,"thread A begin",14);
+    write(1,"thread A begin\n",15);
 
     //スレッドBの開始
     d[1].port = 49990;
@@ -100,7 +100,7 @@ int main()
     d[1].send_data_ptr = send_data_b;
     d[1].recv_data_ptr = recv_data_b;
     pthread_create(&t[1], NULL, communication, &d[1]);
-    write(1,"thread B begin",14);
+    write(1,"thread B begin\n",15);
 
     //スレッドCの開始
     d[2].port = 49980;
@@ -110,7 +110,7 @@ int main()
     d[2].send_data_ptr = send_data_c;
     d[2].recv_data_ptr = recv_data_c;
     pthread_create(&t[2], NULL, communication, &d[2]);
-    write(1,"thread C begin",14);
+    write(1,"thread C begin\n",15);
 
     //スレッドの巡回とrecvしたデータをsendするデータに入れる
     while(1)
@@ -120,11 +120,11 @@ int main()
                 *send_data_a = (*recv_data_b + *recv_data_c) / 2;
                 recved_flag_a = 0;
                 sendable_flag_a = 1;
-                write(1,"send A",6);
+                write(1,"send A\n'",7);
             } else {
                 *send_data_a = 0;
                 sendable_flag_a = 1;
-                write(1,"send else A",11);
+                write(1,"send else A\n",12);
             }
 
             if(recved_flag_b == 1){
@@ -181,10 +181,17 @@ int main()
             }
             
         }else if (connect_flag_a + connect_flag_b + connect_flag_c == 1){
-            memcpy(send_data_a, recv_data_a, LENGTH);
-            write(1,"a\n",2);
-            recved_flag_a = 0;
-            sendable_flag_a = 1;
+            // write(1,"a\n",2);
+            // write(1,recved_flag_a == 1 ? "re1" : "re0",3);
+            // write(1,"\n",1);
+            // write(1,sendable_flag_a == 1 ? "se1" : "se0",3);
+            // write(1,"\n",1);
+            if(recved_flag_a == 1){
+                memcpy(send_data_a, recv_data_a, LENGTH);
+                recved_flag_a = 0;
+                sendable_flag_a = 1;
+            }
+            
         }
         
     }
@@ -241,24 +248,29 @@ void *communication(void *thr_arg){
     *pd->connect_flag = 1;
 
     while(1){
+        write(1,"b\n",2);
         //データを受け取って、受け取れたらその値を、受け取れなかったら0をメモリに格納
         int l = recv(s, pd->recv_data_ptr, 1000, 0);
         // write(1,pd->recv_data_ptr,l);
         if (l == -1){
             die("recv");
         } else if (l == 0) {
-            *pd->recv_data_ptr = 0;
+            memset(pd->recv_data_ptr,'0',LENGTH);
+            // *pd->recv_data_ptr = 0;
             *pd->recved_flag = 1;
         } else if (l > 0) {
             *pd->recved_flag = 1;
         }
 
+        // write(1,pd->recv_data_ptr, 1000);
+        // send(s, pd->recv_data_ptr, 1000, 0);
+        
         // sendable_flagが1ならsendする
         if (*pd->sendable_flag == 1) {
-            // write(1,pd->send_data_ptr, 1000);
             int n = send(s, pd->send_data_ptr, 1000, 0);
             if (n == -1) die("send");
-            *pd->sendable_flag = 0;    
+
+            *pd->sendable_flag = 0;  
         }
     }
     shutdown(s,SHUT_WR);
